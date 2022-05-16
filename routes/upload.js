@@ -4,7 +4,6 @@ const fs = require("fs");
 const multer = require("multer");
 const { getDbInstance } = require("../db");
 const { ObjectId } = require("mongodb");
-const res = require("express/lib/response");
 
 const storage = multer.diskStorage({
     destination: function(req, file, cb) {
@@ -51,7 +50,15 @@ uploadRouter.post("/multiple", uploadMiddlewareMutiple, async(req, res) => {
         let result = await (await getDbInstance())
             .collection("uploads")
             .insertMany(req.files);
-        res.send({ fileId: result.insertedIds });
+        console.log(result.insertedIds);
+        let values = Object.values(result.insertedIds);
+        values = values.map((value) => {
+            return {
+                "url-ori": `http://localhost:3000/download/ori/${value}`,
+                "url-resize": `http://localhost:3000/download/resize/${value}`,
+            };
+        });
+        res.send(values);
     } catch (error) {
         res.json({ error: error.message });
     }
@@ -68,22 +75,12 @@ uploadRouter.post("/", uploadMiddlewareSingle, async(req, res) => {
         const result = await (await getDbInstance())
             .collection("uploads")
             .insertOne(file);
-        res.send({ fileId: result.insertedId });
-    } catch (error) {
-        res.json({ error: error.message });
-    }
-});
-uploadRouter.get("/:id", async(req, res) => {
-    try {
-        //step 1: lay param id
-        const id = req.params.id;
-        //step 2: lay metadata cua file tu database bang id
-        let meta = await (await getDbInstance())
-            .collection("uploads")
-            .findOne({ _id: ObjectId(id) });
-        //step 3: doc file va gui ve client
-        const dir = `./uploads/${meta.filename}`;
-        res.download(dir, meta.originalname);
+
+        const value = result.insertedId
+        res.send({
+            "url-ori": `http://localhost:3000/download/ori/${value}`,
+            "url-resize": `http://localhost:3000/download/resize/${value}`,
+        });
     } catch (error) {
         res.json({ error: error.message });
     }
